@@ -13,17 +13,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
-        /* Custom font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
 
         body {
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
             background-color: #f8fafc;
-            /* Light gray background */
         }
 
-        /* Subtle Animated Geometric Background */
         body::before {
             content: '';
             position: absolute;
@@ -52,19 +49,12 @@
             }
         }
 
-        /* Professional Card with Soft Shadow */
         .professional-card {
             background: white;
             border-radius: 20px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transition: all 0.5s ease-in-out;
-        }
-
-        /* Custom styling for form elements in light mode */
-        textarea::placeholder,
-        input::placeholder {
-            color: #94a3b8;
         }
 
         textarea,
@@ -83,7 +73,6 @@
             background-color: #fff;
         }
 
-        /* Professional Button Style */
         .btn-primary {
             background-color: #4f46e5;
             transition: all 0.2s ease-in-out;
@@ -100,7 +89,6 @@
             cursor: not-allowed;
         }
 
-        /* Typing animation styles */
         #plan-output {
             min-height: 300px;
             background-color: #f8fafc;
@@ -185,7 +173,6 @@
     </div>
 
     <script>
-        // DOM Elements
         const step1 = document.getElementById('step-1-input');
         const step2 = document.getElementById('step-2-plan');
         const form = document.getElementById('ppt-form');
@@ -198,7 +185,6 @@
 
         let fullMarkdownPlan = '';
 
-        // --- Step 1: Generate Plan ---
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             errorMessage.textContent = '';
@@ -212,13 +198,11 @@
                 return;
             }
 
-            // UI state: loading plan
             planBtn.disabled = true;
             spinner1.classList.remove('hidden');
             planBtn.querySelector('span').textContent = 'Planning...';
 
             try {
-                // NOTE: You will need to create this new endpoint in your Flask app
                 const planApiUrl = window.location.origin + '/generate_plan';
 
                 const response = await fetch(planApiUrl, {
@@ -230,14 +214,11 @@
                     }),
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
                 const data = await response.json();
                 fullMarkdownPlan = data.markdown_plan;
 
-                // Transition to Step 2
                 step1.classList.add('hidden');
                 step2.classList.remove('hidden');
                 typewriterEffect(fullMarkdownPlan);
@@ -246,25 +227,20 @@
                 console.error('Error:', error);
                 errorMessage.textContent = 'Failed to generate plan. Please try again.';
             } finally {
-                // Reset Step 1 button
                 planBtn.disabled = false;
                 spinner1.classList.add('hidden');
                 planBtn.querySelector('span').textContent = 'Generate Plan';
             }
         });
 
-        // --- Step 2: Create PPT File ---
         createBtn.addEventListener('click', async () => {
             errorMessage.textContent = '';
-
-            // UI state: creating file
             createBtn.disabled = true;
             spinner2.classList.remove('hidden');
             createBtn.querySelector('span').textContent = 'Creating File...';
 
             try {
-                // NOTE: You will need to create this new endpoint in your Flask app
-                const createApiUrl = window.location.origin + '/create_ppt';
+                const createApiUrl = window.location.origin + '/create_file';
 
                 const response = await fetch(createApiUrl, {
                     method: 'POST',
@@ -275,11 +251,8 @@
                     }),
                 });
 
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
 
-                // Handle file download
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -290,38 +263,36 @@
                 window.URL.revokeObjectURL(url);
                 a.remove();
 
-                // Optionally, reset to Step 1 after success
                 setTimeout(() => {
                     step2.classList.add('hidden');
                     step1.classList.remove('hidden');
                     createBtn.classList.add('hidden');
+                    planOutput.innerHTML = '';
                 }, 1000);
 
             } catch (error) {
                 console.error('Error:', error);
                 errorMessage.textContent = 'Failed to create PPT file. Please try again.';
             } finally {
-                // Reset Step 2 button
                 createBtn.disabled = false;
                 spinner2.classList.add('hidden');
                 createBtn.querySelector('span').textContent = 'Create PPT & Download';
             }
         });
 
-        // --- Typewriter Effect Function ---
         function typewriterEffect(text) {
             let i = 0;
-            planOutput.innerHTML = ''; // Clear previous content
+            planOutput.innerHTML = '';
             const cursor = '<span class="blinking-cursor">|</span>';
 
             function type() {
                 if (i < text.length) {
                     planOutput.innerHTML = text.substring(0, i + 1) + cursor;
                     i++;
-                    setTimeout(type, 15); // Adjust typing speed here
+                    setTimeout(type, 15);
                 } else {
-                    planOutput.innerHTML = text; // Remove cursor when done
-                    createBtn.classList.remove('hidden'); // Show the create button
+                    planOutput.innerHTML = text;
+                    createBtn.classList.remove('hidden');
                 }
             }
             type();
