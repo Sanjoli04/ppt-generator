@@ -95,7 +95,7 @@ Follow these instructions to get the project running on your local machine for d
 
 The application uses a two-endpoint process to create an interactive experience:
 
-1. **`/generate_plan`**
+1. **`/create_ppt`**
 
    * **Method**: POST
    * **Description**: Takes the user's raw text and slide count, calls the AI to generate a markdown plan for the presentation.
