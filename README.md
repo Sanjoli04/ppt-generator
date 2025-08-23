@@ -87,7 +87,7 @@ Follow these instructions to get the project running on your local machine for d
    ```
 
 6. The application will be available at:
-   👉 [http://127.0.0.1:5000](http://127.0.0.1:5000)
+   👉 [http://12.0.0.1:5000](http://12.0.0.1:5000)
 
 ---
 
@@ -95,7 +95,7 @@ Follow these instructions to get the project running on your local machine for d
 
 The application uses a two-endpoint process to create an interactive experience:
 
-1. **`/create_ppt`**
+1. **`/generate_plan`**
 
    * **Method**: POST
    * **Description**: Takes the user's raw text and slide count, calls the AI to generate a markdown plan for the presentation.
