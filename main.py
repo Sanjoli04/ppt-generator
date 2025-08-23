@@ -1,63 +1,22 @@
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.tools import tool
-from langchain.agents import create_tool_calling_agent, AgentExecutor
+import io
 import pptx
 from pptx.util import Inches
 from typing import Optional
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify, request, send_file
+import json
 from dotenv import load_dotenv
+import os
+
 load_dotenv()
-GOOGLE_API_KEY = userdata.get('gemini-api-key') # Store the api key in the key button present on the left sidebar shaped
+GOOGLE_API_KEY = os.getenv('gemini-api-key') # Store the api key in the key button present on the left sidebar shaped
 MODEL_NAME = "gemini-1.5-pro-latest"
 if not GOOGLE_API_KEY:
-  raise NoneTypeException("GOOGLE_API_KEY not found. Please set the api key as gemini-api-key in left sidebar")
-print("GOOGLE_API_KEY is loaded..")
+    raise ValueError("GOOGLE_API_KEY not found. Please set it in your .env file.")
 os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
-print("GOOGLE_API_KEY is set")
-
-!pip install langchain_core langchain_google_genai langchain_experimental google-generativeai
-
-!pip install python-pptx
-
-
-@tool
-def create_powerpoint(markdown_slides: str, filename: Optional[str] = None) -> str:
-    """
-    Creates a PowerPoint presentation from a markdown string.
-    """
-    if filename is None:
-        filename = "presentation.pptx"
-
-    prs = pptx.Presentation()
-    slides = markdown_slides.strip().split('---')
-
-    for i, slide_content in enumerate(slides):
-        lines = [line for line in slide_content.strip().split('\n') if line.strip()]
-        if not lines:
-            continue
-
-        # Use 'Title Slide' layout for the first slide, 'Title and Content' for the rest
-        if i == 0:
-            slide_layout = prs.slide_layouts[0] # Title Slide
-            slide = prs.slides.add_slide(slide_layout)
-            slide.shapes.title.text = lines[0].replace('#', '').strip()
-            if len(lines) > 1:
-                slide.placeholders[1].text = '\n'.join(line.replace('##', '').replace('###', '').strip() for line in lines[1:])
-        else:
-            slide_layout = prs.slide_layouts[1] # Title and Content
-            slide = prs.slides.add_slide(slide_layout)
-            slide.shapes.title.text = lines[0].replace('#', '').strip()
-            tf = slide.placeholders[1].text_frame
-            tf.clear()
-            for line in lines[1:]:
-                if line.strip().startswith('-'):
-                    p = tf.add_paragraph()
-                    p.text = line.strip().lstrip('-').strip()
-                    p.level = 0
-
-    prs.save(filename)
-    return f"Success! The presentation has been saved as {filename}"
+################################################# AGENT SETUP #################################################
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
     You are a presentation generation AI. Your only goal is to create a PowerPoint file by calling the `create_powerpoint` tool.
@@ -98,24 +57,67 @@ prompt = ChatPromptTemplate.from_messages([
     MessagesPlaceholder(variable_name="agent_scratchpad"),
 ])
 llm = ChatGoogleGenerativeAI(model=MODEL_NAME)
-tools = [create_powerpoint]
-agent = create_tool_calling_agent(llm, tools, prompt)
-agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
+agent_executor = llm | prompt
+app = Flask(__name__)
+################################################# HELPER FUNCTIONS #################################################
+def create_powerpoint_in_memory(markdown_slides: str):
+    """
+    Creates a PowerPoint presentation from a markdown slides and returns the buffer
+    """
+    prs = pptx.Presentation()
+    slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
 
-def test_create_powerpoint():
+    for i, slide_markdown in enumerate(slides_content):
+        lines = [line.strip() for line in slide_markdown.split('\n') if line.strip()]
+        if not lines:
+            continue
+
+        if i == 0:
+            slide_layout = prs.slide_layouts[0] # Title Slide
+            slide = prs.slides.add_slide(slide_layout)
+            slide.shapes.title.text = lines[0].replace('#', '').split(':', 1)[-1].strip()
+            if len(lines) > 1:
+                slide.placeholders[1].text = lines[1].replace('##', '').strip()
+        else:
+            slide_layout = prs.slide_layouts[1] # Title and Content
+            slide = prs.slides.add_slide(slide_layout)
+            slide.shapes.title.text = lines[0].replace('#', '').split(':', 1)[-1].strip()
+            tf = slide.placeholders[1].text_frame
+            tf.clear()
+            for line in lines[1:]:
+                if line.startswith('-'):
+                    p = tf.add_paragraph()
+                    p.text = line.lstrip('- ').strip()
+                    p.level = 0
+    
+    # Save the presentation to an in-memory buffer
+    buffer = io.BytesIO()
+    prs.save(buffer)
+    buffer.seek(0) # Rewind the buffer to the beginning
+    return buffer
+################################################# ROUTES #################################################
+@app.route("/")
+def index():
+    return render_template("index.html")
+@app.route("/create_ppt",methods=["POST"])
+def create_ppt():
     global agent_executor
-    user_text = """The fundamental shift to cloud computing represents one of the most significant advancements in modern technology. The primary benefit for businesses is a massive reduction in capital expenditure, as they can avoid purchasing and maintaining expensive hardware. Another key advantage is scalability and flexibility. Cloud services allow businesses to scale their resources up or down almost instantly based on demand, preventing wasted resources. Finally, cloud computing enhances collaboration and accessibility. With data and applications hosted in the cloud, teams can access their work from anywhere in the world, significantly improving productivity."""
-    slide_count = 4
-
+    data  = request.get_json()
+    bulk_text = data.get("bulk_text")
+    number_of_slides  = int(data.get("number_of_slides"))
+    filename = data.get("filename", "presentation.pptx")
     result = agent_executor.invoke({
-        "bulk_text": user_text,
-        "number_of_slides": slide_count
+        "bulk_text": bulk_text,
+        "number_of_slides": number_of_slides,
     })
-    print("\n--- Final Output ---")
-    print(result['output'])
-test_create_powerpoint()
+    markdown_plan = result.content
+    ppt_buffer = create_powerpoint_in_memory(markdown_plan)
+    return send_file(
+        ppt_buffer,
+        as_attachment=True,
+        download_name = filename,
+        mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    )
+if __name__ == "__main__":
+    app.run(debug=True)
 
-prs = pptx.Presentation()
-prs.slide_layouts[7].name
-slide = prs.slides.add_slide(prs.slide_layouts[1])
-slide.placeholders[1].text_frame

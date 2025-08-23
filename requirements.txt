@@ -1,0 +1,6 @@
+langchain_core
+langchain_google_genai
+flask
+python-pptx
+python-dotenv
+gunicorn
