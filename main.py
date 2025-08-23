@@ -17,7 +17,6 @@ if not GOOGLE_API_KEY:
 os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
 
 # --- 2. The AI Chain (for Markdown Generation) ---
-# This prompt is highly detailed to ensure the AI generates a complete and well-structured plan.
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
     You are an expert presentation designer AI. Your only goal is to generate a detailed markdown string for a presentation based on the user's text and slide count.
@@ -51,14 +50,24 @@ prompt = ChatPromptTemplate.from_messages([
 ])
 
 llm = ChatGoogleGenerativeAI(model=MODEL_NAME)
-# A simple chain: the user input is formatted by the prompt and then sent to the LLM.
 chain = prompt | llm
 
 # --- 3. PowerPoint Helper Function ---
 def create_powerpoint_in_memory(markdown_slides: str):
     """Creates a PowerPoint presentation from a markdown string and returns the in-memory buffer."""
+    
+    # --- FIX: Clean the raw markdown from the AI ---
+    # Sometimes the AI wraps its output in a markdown code block. This removes it.
+    cleaned_markdown = markdown_slides.strip()
+    if cleaned_markdown.startswith("```markdown"):
+        cleaned_markdown = cleaned_markdown[len("```markdown"):].strip()
+    if cleaned_markdown.endswith("```"):
+        cleaned_markdown = cleaned_markdown[:-len("```")].strip()
+    # --- End of Fix ---
+
     prs = pptx.Presentation()
-    slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
+    # Use the cleaned markdown for splitting
+    slides_content = [s.strip() for s in cleaned_markdown.split('---') if s.strip()]
 
     for i, slide_markdown in enumerate(slides_content):
         lines = [line.strip() for line in slide_markdown.split('\n') if line.strip()]
