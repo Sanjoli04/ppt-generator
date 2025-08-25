@@ -17,37 +17,6 @@
             background-color: #f8fafc;
         }
 
-<<<<<<< HEAD
-=======
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(45deg, #e0e7ff 25%, transparent 25%),
-                linear-gradient(-45deg, #e0e7ff 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #e0e7ff 75%),
-                linear-gradient(-45deg, transparent 75%, #e0e7ff 75%);
-            background-size: 60px 60px;
-            opacity: 0.3;
-            z-index: -1;
-            animation: move 30s linear infinite;
-        }
-
-        @keyframes move {
-            0% {
-                background-position: 0 0;
-            }
-
-            100% {
-                background-position: 60px 60px;
-            }
-        }
-
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
         .professional-card {
             background: white;
             border-radius: 20px;
@@ -55,14 +24,8 @@
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
-<<<<<<< HEAD
         input,
         textarea {
-=======
-        textarea,
-        input {
-            resize: none;
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
             transition: all 0.3s ease;
             background-color: #f1f5f9;
             color: #1e293b;
@@ -92,21 +55,11 @@
             cursor: not-allowed;
         }
 
-<<<<<<< HEAD
         /* Custom file input */
         .file-input-label {
             cursor: pointer;
             border: 2px dashed #cbd5e1;
             transition: all 0.3s ease;
-=======
-        #plan-output {
-            min-height: 300px;
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            white-space: pre-wrap;
-            font-family: 'Courier New', Courier, monospace;
-            color: #334155;
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
         }
 
         .file-input-label:hover {
@@ -179,11 +132,6 @@
     </div>
 
     <script>
-<<<<<<< HEAD
-=======
-        const step1 = document.getElementById('step-1-input');
-        const step2 = document.getElementById('step-2-plan');
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
         const form = document.getElementById('ppt-form');
         const generateBtn = document.getElementById('generate-btn');
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -191,7 +139,6 @@
         const fileInput = document.getElementById('template-file');
         const fileNameDisplay = document.getElementById('file-name-display');
 
-<<<<<<< HEAD
         fileInput.addEventListener('change', () => {
             if (fileInput.files.length > 0) {
                 fileNameDisplay.textContent = fileInput.files[0].name;
@@ -224,81 +171,18 @@
 
             try {
                 const apiUrl = window.location.origin + '/generate_presentation';
-=======
-        let fullMarkdownPlan = '';
-
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            errorMessage.textContent = '';
-            fullMarkdownPlan = '';
-
-            const bulkText = document.getElementById('bulk-text').value;
-            const slideCount = document.getElementById('slide-count').value;
-
-            if (!bulkText.trim() || slideCount < 2) {
-                errorMessage.textContent = 'Please provide text and at least 2 slides.';
-                return;
-            }
-
-            planBtn.disabled = true;
-            spinner1.classList.remove('hidden');
-            planBtn.querySelector('span').textContent = 'Planning...';
-
-            try {
-                const planApiUrl = window.location.origin + '/generate_plan';
-
-                const response = await fetch(planApiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bulk_text: bulkText,
-                        number_of_slides: parseInt(slideCount, 10),
-                    }),
-                });
-
-                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
-
-                const data = await response.json();
-                fullMarkdownPlan = data.markdown_plan;
-
-                step1.classList.add('hidden');
-                step2.classList.remove('hidden');
-                typewriterEffect(fullMarkdownPlan);
-
-            } catch (error) {
-                console.error('Error:', error);
-                errorMessage.textContent = 'Failed to generate plan. Please try again.';
-            } finally {
-                planBtn.disabled = false;
-                spinner1.classList.add('hidden');
-                planBtn.querySelector('span').textContent = 'Generate Plan';
-            }
-        });
-
-        createBtn.addEventListener('click', async () => {
-            errorMessage.textContent = '';
-            createBtn.disabled = true;
-            spinner2.classList.remove('hidden');
-            createBtn.querySelector('span').textContent = 'Creating File...';
-
-            try {
-                const createApiUrl = window.location.origin + '/create_file';
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
                     body: formData, // FormData sets the correct headers automatically
                 });
 
-<<<<<<< HEAD
                 if (!response.ok) {
                     const errorData = await response.json().catch(() => ({ error: 'An unknown server error occurred.' }));
                     throw new Error(errorData.error || `Server error: ${response.statusText}`);
                 }
-=======
-                if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
 
+                // Handle file download
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -309,52 +193,16 @@
                 window.URL.revokeObjectURL(url);
                 a.remove();
 
-<<<<<<< HEAD
-=======
-                setTimeout(() => {
-                    step2.classList.add('hidden');
-                    step1.classList.remove('hidden');
-                    createBtn.classList.add('hidden');
-                    planOutput.innerHTML = '';
-                }, 1000);
-
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
             } catch (error) {
                 console.error('Error:', error);
                 errorMessage.textContent = error.message;
             } finally {
-<<<<<<< HEAD
                 // UI state: reset
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
                 generateBtn.querySelector('span').textContent = 'Generate Presentation';
             }
         });
-=======
-                createBtn.disabled = false;
-                spinner2.classList.add('hidden');
-                createBtn.querySelector('span').textContent = 'Create PPT & Download';
-            }
-        });
-
-        function typewriterEffect(text) {
-            let i = 0;
-            planOutput.innerHTML = '';
-            const cursor = '<span class="blinking-cursor">|</span>';
-
-            function type() {
-                if (i < text.length) {
-                    planOutput.innerHTML = text.substring(0, i + 1) + cursor;
-                    i++;
-                    setTimeout(type, 15);
-                } else {
-                    planOutput.innerHTML = text;
-                    createBtn.classList.remove('hidden');
-                }
-            }
-            type();
-        }
->>>>>>> 633c17323ee7f1aee672a6457b00a3969d2adf01
     </script>
 </body>
 
