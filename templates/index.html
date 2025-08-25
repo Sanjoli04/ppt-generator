@@ -4,86 +4,41 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Presentation Generator</title>
+    <title>Your Text, Your Style - AI Presentation Generator</title>
 
-    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 
     <style>
-        /* Custom font */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
 
         body {
             font-family: 'Inter', sans-serif;
-            overflow-x: hidden;
             background-color: #f8fafc;
-            /* Light gray background */
         }
 
-        /* Subtle Animated Geometric Background */
-        body::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(45deg, #e0e7ff 25%, transparent 25%),
-                linear-gradient(-45deg, #e0e7ff 25%, transparent 25%),
-                linear-gradient(45deg, transparent 75%, #e0e7ff 75%),
-                linear-gradient(-45deg, transparent 75%, #e0e7ff 75%);
-            background-size: 60px 60px;
-            opacity: 0.3;
-            z-index: -1;
-            animation: move 30s linear infinite;
-        }
-
-        @keyframes move {
-            0% {
-                background-position: 0 0;
-            }
-
-            100% {
-                background-position: 60px 60px;
-            }
-        }
-
-        /* Professional Card with Soft Shadow */
         .professional-card {
             background: white;
             border-radius: 20px;
             border: 1px solid #e2e8f0;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            transition: all 0.5s ease-in-out;
         }
 
-        /* Custom styling for form elements in light mode */
-        textarea::placeholder,
-        input::placeholder {
-            color: #94a3b8;
-        }
-
-        textarea,
-        input {
-            resize: none;
+        input,
+        textarea {
             transition: all 0.3s ease;
             background-color: #f1f5f9;
             color: #1e293b;
             border: 1px solid #cbd5e1;
         }
 
-        textarea:focus,
-        input:focus {
+        input:focus,
+        textarea:focus {
             box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
             border-color: #4f46e5;
             background-color: #fff;
         }
 
-        /* Professional Button Style */
         .btn-primary {
             background-color: #4f46e5;
             transition: all 0.2s ease-in-out;
@@ -100,30 +55,16 @@
             cursor: not-allowed;
         }
 
-        /* Typing animation styles */
-        #plan-output {
-            min-height: 300px;
-            background-color: #f8fafc;
-            border: 1px solid #e2e8f0;
-            white-space: pre-wrap;
-            font-family: 'Courier New', Courier, monospace;
-            color: #334155;
+        /* Custom file input */
+        .file-input-label {
+            cursor: pointer;
+            border: 2px dashed #cbd5e1;
+            transition: all 0.3s ease;
         }
 
-        .blinking-cursor {
-            animation: blink 1s step-end infinite;
-        }
-
-        @keyframes blink {
-
-            from,
-            to {
-                color: transparent
-            }
-
-            50% {
-                color: #4f46e5;
-            }
+        .file-input-label:hover {
+            border-color: #4f46e5;
+            background-color: #f9fafb;
         }
     </style>
 </head>
@@ -132,151 +73,113 @@
 
     <div class="w-full max-w-2xl mx-auto">
         <div class="professional-card p-8 md:p-12">
-            <!-- Step 1: Input Form -->
-            <div id="step-1-input">
-                <div class="text-center mb-10">
-                    <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">AI Presentation
-                        Generator</h1>
-                    <p class="text-slate-600 mt-4 text-lg">Turn your raw text into polished presentations.</p>
-                </div>
-                <form id="ppt-form" class="space-y-6">
-                    <div>
-                        <label for="bulk-text" class="block text-sm font-medium text-slate-700 mb-2">Your Raw
-                            Text</label>
-                        <textarea id="bulk-text" name="bulk-text" rows="12" class="w-full p-4 rounded-lg"
-                            placeholder="Paste your article, notes, or any block of text here..."></textarea>
-                    </div>
-                    <div>
-                        <label for="slide-count" class="block text-sm font-medium text-slate-700 mb-2">Desired Number of
-                            Slides</label>
-                        <input type="number" id="slide-count" name="slide-count" min="2" value="5"
-                            class="w-full p-3 rounded-lg">
-                    </div>
-                    <button type="submit" id="plan-btn"
-                        class="w-full text-white font-bold py-4 px-6 rounded-lg shadow-lg flex items-center justify-center space-x-3 btn-primary">
-                        <i class="fas fa-file-alt text-xl"></i>
-                        <span class="text-lg">Generate Plan</span>
-                        <div id="loading-spinner-1"
-                            class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin">
-                        </div>
-                    </button>
-                </form>
+            <div class="text-center mb-10">
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Your Text, Your Style</h1>
+                <p class="text-slate-600 mt-4 text-lg">Auto-Generate a Presentation from Text & a Template</p>
             </div>
 
-            <!-- Step 2: AI Planning Output -->
-            <div id="step-2-plan" class="hidden">
-                <div class="text-center mb-6">
-                    <h2 class="text-3xl font-extrabold text-gray-900">AI is Generating the Plan...</h2>
-                    <p class="text-slate-600 mt-2">Here's the presentation structure being created in real-time.</p>
+            <form id="ppt-form" class="space-y-6">
+                <!-- Text Input -->
+                <div>
+                    <label for="bulk-text" class="block text-sm font-medium text-slate-700 mb-2">1. Paste Your
+                        Text</label>
+                    <textarea id="bulk-text" name="bulk-text" rows="10" class="w-full p-4 rounded-lg"
+                        placeholder="Paste your article, notes, or any block of text here..."></textarea>
                 </div>
-                <div id="plan-output" class="w-full p-4 rounded-lg overflow-y-auto"></div>
-                <button id="create-btn"
-                    class="w-full text-white font-bold py-4 px-6 rounded-lg shadow-lg flex items-center justify-center space-x-3 btn-primary mt-6 hidden">
+
+                <!-- Guidance Input -->
+                <div>
+                    <label for="guidance" class="block text-sm font-medium text-slate-700 mb-2">2. (Optional) Add
+                        Guidance</label>
+                    <input type="text" id="guidance" name="guidance" class="w-full p-3 rounded-lg"
+                        placeholder="e.g., 'Make this an investor pitch deck'">
+                </div>
+
+                <!-- API Key Input -->
+                <div>
+                    <label for="api-key" class="block text-sm font-medium text-slate-700 mb-2">3. Your LLM API
+                        Key</label>
+                    <input type="password" id="api-key" name="api-key" class="w-full p-3 rounded-lg"
+                        placeholder="Enter your Gemini, OpenAI, or Anthropic key">
+                    <p class="text-xs text-slate-500 mt-1">Your key is used only for this request and is never stored.
+                    </p>
+                </div>
+
+                <!-- Template Upload -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">4. Upload a PowerPoint Template
+                        (.pptx)</label>
+                    <label for="template-file"
+                        class="file-input-label w-full p-6 rounded-lg flex flex-col items-center justify-center text-center">
+                        <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
+                        <span id="file-name-display" class="text-slate-600">Click to browse or drag & drop</span>
+                    </label>
+                    <input type="file" id="template-file" name="template-file" class="hidden" accept=".pptx,.potx">
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="generate-btn"
+                    class="w-full text-white font-bold py-4 px-6 rounded-lg shadow-lg flex items-center justify-center space-x-3 btn-primary">
                     <i class="fas fa-wand-magic-sparkles text-xl"></i>
-                    <span class="text-lg">Create PPT & Download</span>
-                    <div id="loading-spinner-2"
+                    <span class="text-lg">Generate Presentation</span>
+                    <div id="loading-spinner"
                         class="hidden w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin">
                     </div>
                 </button>
-            </div>
-
+            </form>
             <p id="error-message" class="text-red-600 text-center mt-4 h-5"></p>
         </div>
     </div>
 
     <script>
-        // DOM Elements
-        const step1 = document.getElementById('step-1-input');
-        const step2 = document.getElementById('step-2-plan');
         const form = document.getElementById('ppt-form');
-        const planBtn = document.getElementById('plan-btn');
-        const createBtn = document.getElementById('create-btn');
-        const planOutput = document.getElementById('plan-output');
+        const generateBtn = document.getElementById('generate-btn');
+        const loadingSpinner = document.getElementById('loading-spinner');
         const errorMessage = document.getElementById('error-message');
-        const spinner1 = document.getElementById('loading-spinner-1');
-        const spinner2 = document.getElementById('loading-spinner-2');
+        const fileInput = document.getElementById('template-file');
+        const fileNameDisplay = document.getElementById('file-name-display');
 
-        let fullMarkdownPlan = '';
-
-        // --- Step 1: Generate Plan ---
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            errorMessage.textContent = '';
-            fullMarkdownPlan = '';
-
-            const bulkText = document.getElementById('bulk-text').value;
-            const slideCount = document.getElementById('slide-count').value;
-
-            if (!bulkText.trim() || slideCount < 2) {
-                errorMessage.textContent = 'Please provide text and at least 2 slides.';
-                return;
-            }
-
-            // UI state: loading plan
-            planBtn.disabled = true;
-            spinner1.classList.remove('hidden');
-            planBtn.querySelector('span').textContent = 'Planning...';
-
-            try {
-                // NOTE: You will need to create this new endpoint in your Flask app
-                const planApiUrl = window.location.origin + '/generate_plan';
-
-                const response = await fetch(planApiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        bulk_text: bulkText,
-                        number_of_slides: parseInt(slideCount, 10),
-                    }),
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
-                }
-
-                const data = await response.json();
-                fullMarkdownPlan = data.markdown_plan;
-
-                // Transition to Step 2
-                step1.classList.add('hidden');
-                step2.classList.remove('hidden');
-                typewriterEffect(fullMarkdownPlan);
-
-            } catch (error) {
-                console.error('Error:', error);
-                errorMessage.textContent = 'Failed to generate plan. Please try again.';
-            } finally {
-                // Reset Step 1 button
-                planBtn.disabled = false;
-                spinner1.classList.add('hidden');
-                planBtn.querySelector('span').textContent = 'Generate Plan';
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = fileInput.files[0].name;
+                fileNameDisplay.classList.add('font-semibold', 'text-indigo-600');
+            } else {
+                fileNameDisplay.textContent = 'Click to browse or drag & drop';
+                fileNameDisplay.classList.remove('font-semibold', 'text-indigo-600');
             }
         });
 
-        // --- Step 2: Create PPT File ---
-        createBtn.addEventListener('click', async () => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             errorMessage.textContent = '';
 
-            // UI state: creating file
-            createBtn.disabled = true;
-            spinner2.classList.remove('hidden');
-            createBtn.querySelector('span').textContent = 'Creating File...';
+            const formData = new FormData();
+            formData.append('bulk_text', document.getElementById('bulk-text').value);
+            formData.append('guidance', document.getElementById('guidance').value);
+            formData.append('api_key', document.getElementById('api-key').value);
+
+            if (fileInput.files.length === 0) {
+                errorMessage.textContent = 'Please upload a PowerPoint template file.';
+                return;
+            }
+            formData.append('template_file', fileInput.files[0]);
+
+            // UI state: loading
+            generateBtn.disabled = true;
+            loadingSpinner.classList.remove('hidden');
+            generateBtn.querySelector('span').textContent = 'Generating...';
 
             try {
-                // NOTE: You will need to create this new endpoint in your Flask app
-                const createApiUrl = window.location.origin + '/create_ppt';
+                const apiUrl = window.location.origin + '/generate_presentation';
 
-                const response = await fetch(createApiUrl, {
+                const response = await fetch(apiUrl, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        markdown_plan: fullMarkdownPlan,
-                        filename: "Generated-Presentation.pptx"
-                    }),
+                    body: formData, // FormData sets the correct headers automatically
                 });
 
                 if (!response.ok) {
-                    throw new Error(`Server error: ${response.statusText}`);
+                    const errorData = await response.json().catch(() => ({ error: 'An unknown server error occurred.' }));
+                    throw new Error(errorData.error || `Server error: ${response.statusText}`);
                 }
 
                 // Handle file download
@@ -290,42 +193,16 @@
                 window.URL.revokeObjectURL(url);
                 a.remove();
 
-                // Optionally, reset to Step 1 after success
-                setTimeout(() => {
-                    step2.classList.add('hidden');
-                    step1.classList.remove('hidden');
-                    createBtn.classList.add('hidden');
-                }, 1000);
-
             } catch (error) {
                 console.error('Error:', error);
-                errorMessage.textContent = 'Failed to create PPT file. Please try again.';
+                errorMessage.textContent = error.message;
             } finally {
-                // Reset Step 2 button
-                createBtn.disabled = false;
-                spinner2.classList.add('hidden');
-                createBtn.querySelector('span').textContent = 'Create PPT & Download';
+                // UI state: reset
+                generateBtn.disabled = false;
+                loadingSpinner.classList.add('hidden');
+                generateBtn.querySelector('span').textContent = 'Generate Presentation';
             }
         });
-
-        // --- Typewriter Effect Function ---
-        function typewriterEffect(text) {
-            let i = 0;
-            planOutput.innerHTML = ''; // Clear previous content
-            const cursor = '<span class="blinking-cursor">|</span>';
-
-            function type() {
-                if (i < text.length) {
-                    planOutput.innerHTML = text.substring(0, i + 1) + cursor;
-                    i++;
-                    setTimeout(type, 15); // Adjust typing speed here
-                } else {
-                    planOutput.innerHTML = text; // Remove cursor when done
-                    createBtn.classList.remove('hidden'); // Show the create button
-                }
-            }
-            type();
-        }
     </script>
 </body>
 

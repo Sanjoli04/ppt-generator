@@ -1,71 +1,68 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.tools import tool
+import os
 import io
 import pptx
-from pptx.util import Inches
-from typing import Optional
+from pptx.util import Inches, Pt
 from flask import Flask, render_template, jsonify, request, send_file
-import json
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
-import os
 
+# --- 1. Setup and Configuration ---
 load_dotenv()
-GOOGLE_API_KEY = os.getenv('gemini-api-key') # Store the api key in the key button present on the left sidebar shaped
+# The server's own key is now optional, used only if the user doesn't provide one.
+FALLBACK_GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 MODEL_NAME = "gemini-1.5-pro-latest"
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY not found. Please set it in your .env file.")
-os.environ['GOOGLE_API_KEY'] = GOOGLE_API_KEY
-################################################# AGENT SETUP #################################################
+
+# --- 2. The AI Chain (for Markdown Generation) ---
+# The prompt is updated to accept optional guidance and let the AI decide the slide count.
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are a presentation generation AI. Your only goal is to create a PowerPoint file by calling the `create_powerpoint` tool.
-    To do this, you will first reformat the user's text into a specific, detailed markdown structure. You MUST follow the structure and formatting rules precisely.
-    After creating the perfectly formatted markdown, call the `create_powerpoint` tool. Your job is complete only when the tool returns a success message.
+    You are an expert presentation designer AI. Your goal is to generate a detailed markdown string for a presentation based on the user's text.
+    You will be given a block of text and optional guidance. Your task is to intelligently structure this text into a logical number of slides.
+    Your final output must ONLY be the markdown string, following the specified format with `---` separators.
     """),
     ("user", """
     Here are the precise formatting rules you MUST follow for each slide.
 
     **Slide 1: Title Slide**
-    - The first line must be the main title, starting with `# Slide 1:`. **Generate a compelling title based on the text.**
-    - The second line must be the subtitle, starting with `##`. **Generate a short, engaging subtitle.**
-
+    - A title line starting with `#`.
+    - A subtitle line starting with `##`.
     ---
-
-    **Slides 2 to (N-1): Content Slides**
-    For each key idea from the text, create a slide. Every content slide **MUST** contain all four of the following elements in this exact order:
-    1.  A title line starting with `# Slide [Number]:`. **Generate a descriptive title for the key idea.**
-    2.  2-4 bullet points. Each bullet point must start with `-` and **summarize a specific detail from the text.**
-    3.  Speaker notes, starting with the literal text `**Speaker Notes:**`. **Write brief, helpful notes for the presenter.**
-    4.  A visual suggestion, starting with the literal text `**Visual Suggestion:**`. **Describe a relevant image, chart, or icon.**
-
+    **Content Slides**
+    - Each slide MUST have a title line starting with `#`.
+    - Each slide MUST have 2-5 bullet points starting with `-`.
     ---
+    **Conclusion Slide**
+    - The final slide MUST have a title line starting with `#`.
+    - The final slide MUST have 2-3 summary bullet points.
 
-    **Slide N: Conclusion Slide**
-    The final slide **MUST** contain all four of the following elements in this exact order:
-    1.  A title line: `# Slide [Number]: Conclusion`.
-    2.  2-3 bullet points. Each must start with `-` and **summarize a main takeaway from the presentation.**
-    3.  Speaker notes, starting with the literal text `**Speaker Notes:**`. **Write brief concluding remarks.**
-    4.  A visual suggestion, starting with the literal text `**Visual Suggestion:**`. **Suggest a company logo or 'Thank You' image.**
+    **Optional Guidance for tone and structure:** {guidance}
 
-    Now, create a presentation with exactly {number_of_slides} slides using the text below.
+    Now, analyze the following text and generate the markdown for a presentation. Choose a reasonable number of slides to cover the content effectively.
 
     <TEXT>
     {bulk_text}
     </TEXT>
     """),
-    MessagesPlaceholder(variable_name="agent_scratchpad"),
 ])
-llm = ChatGoogleGenerativeAI(model=MODEL_NAME)
-agent_executor = llm | prompt
-app = Flask(__name__)
-################################################# HELPER FUNCTIONS #################################################
-def create_powerpoint_in_memory(markdown_slides: str):
-    """
-    Creates a PowerPoint presentation from a markdown slides and returns the buffer
-    """
-    prs = pptx.Presentation()
+
+# --- 3. Style Extraction and PowerPoint Generation ---
+def get_layout_from_template(prs, layout_name):
+    """Finds a slide layout by its name in the presentation."""
+    for master in prs.slide_masters:
+        for layout in master.slide_layouts:
+            if layout.name == layout_name:
+                return layout
+    return None
+
+def create_ppt_with_template(markdown_slides: str, template_file):
+    """Creates a PowerPoint presentation applying styles from a template file."""
+    prs = pptx.Presentation(template_file)
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
+
+    # Try to find standard layouts, otherwise fall back to defaults
+    title_layout = get_layout_from_template(prs, 'Title Slide') or prs.slide_layouts[0]
+    content_layout = get_layout_from_template(prs, 'Title and Content') or prs.slide_layouts[1]
 
     for i, slide_markdown in enumerate(slides_content):
         lines = [line.strip() for line in slide_markdown.split('\n') if line.strip()]
@@ -73,51 +70,80 @@ def create_powerpoint_in_memory(markdown_slides: str):
             continue
 
         if i == 0:
-            slide_layout = prs.slide_layouts[0] # Title Slide
-            slide = prs.slides.add_slide(slide_layout)
-            slide.shapes.title.text = lines[0].replace('#', '').split(':', 1)[-1].strip()
-            if len(lines) > 1:
-                slide.placeholders[1].text = lines[1].replace('##', '').strip()
+            slide = prs.slides.add_slide(title_layout)
+            title = slide.shapes.title
+            subtitle = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+            title.text = lines[0].replace('#', '').strip()
+            if subtitle and len(lines) > 1:
+                subtitle.text = lines[1].replace('##', '').strip()
         else:
-            slide_layout = prs.slide_layouts[1] # Title and Content
-            slide = prs.slides.add_slide(slide_layout)
-            slide.shapes.title.text = lines[0].replace('#', '').split(':', 1)[-1].strip()
-            tf = slide.placeholders[1].text_frame
-            tf.clear()
-            for line in lines[1:]:
-                if line.startswith('-'):
-                    p = tf.add_paragraph()
-                    p.text = line.lstrip('- ').strip()
-                    p.level = 0
+            slide = prs.slides.add_slide(content_layout)
+            title = slide.shapes.title
+            body = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+            title.text = lines[0].replace('#', '').strip()
+            if body:
+                tf = body.text_frame
+                tf.clear()
+                for line in lines[1:]:
+                    if line.startswith('-'):
+                        p = tf.add_paragraph()
+                        p.text = line.lstrip('- ').strip()
+                        p.level = 0
     
-    # Save the presentation to an in-memory buffer
     buffer = io.BytesIO()
     prs.save(buffer)
-    buffer.seek(0) # Rewind the buffer to the beginning
+    buffer.seek(0)
     return buffer
-################################################# ROUTES #################################################
+
+# --- 4. Flask Web Application ---
+app = Flask(__name__)
+
 @app.route("/")
 def index():
     return render_template("index.html")
-@app.route("/create_ppt",methods=["POST"])
-def create_ppt():
-    global agent_executor
-    data  = request.get_json()
-    bulk_text = data.get("bulk_text")
-    number_of_slides  = int(data.get("number_of_slides"))
-    filename = data.get("filename", "presentation.pptx")
-    result = agent_executor.invoke({
-        "bulk_text": bulk_text,
-        "number_of_slides": number_of_slides,
-    })
-    markdown_plan = result.content
-    ppt_buffer = create_powerpoint_in_memory(markdown_plan)
-    return send_file(
-        ppt_buffer,
-        as_attachment=True,
-        download_name = filename,
-        mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
-    )
-if __name__ == "__main__":
-    app.run(debug=True)
 
+@app.route("/generate_presentation", methods=['POST'])
+def generate_presentation():
+    """Single endpoint to handle all inputs and generate the presentation."""
+    if 'template_file' not in request.files:
+        return jsonify({"error": "No template file provided."}), 400
+
+    template_file = request.files['template_file']
+    bulk_text = request.form.get('bulk_text', '')
+    guidance = request.form.get('guidance', 'A standard professional presentation.')
+    user_api_key = request.form.get('api_key', '')
+
+    api_key_to_use = user_api_key or FALLBACK_GOOGLE_API_KEY
+    if not api_key_to_use:
+        return jsonify({"error": "No API key provided or configured on the server."}), 400
+
+    try:
+        # Initialize the LLM with the user's key
+        llm = ChatGoogleGenerativeAI(model=MODEL_NAME, google_api_key=api_key_to_use)
+        chain = prompt | llm
+
+        # Step 1: Generate the markdown plan from the AI
+        response = chain.invoke({
+            "bulk_text": bulk_text,
+            "guidance": guidance
+        })
+        markdown_plan = response.content.strip().replace("```markdown", "").replace("```", "")
+
+        # Step 2: Create the PPT file in memory using the template
+        ppt_buffer = create_ppt_with_template(markdown_plan, template_file)
+        
+        return send_file(
+            ppt_buffer,
+            as_attachment=True,
+            download_name="generated_presentation.pptx",
+            mimetype='application/vnd.openxmlformats-officedocument.presentationml.presentation'
+        )
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        # Provide a more specific error message if it's an authentication issue
+        if "API key not valid" in str(e):
+             return jsonify({"error": "The provided API key is not valid. Please check it and try again."}), 401
+        return jsonify({"error": "An error occurred while generating the presentation."}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True)
