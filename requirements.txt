@@ -1,5 +1,7 @@
 langchain_core
 langchain_google_genai
+langchain_openai
+langchain_anthropic
 flask
 python-pptx
 python-dotenv
