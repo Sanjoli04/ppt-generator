@@ -102,10 +102,11 @@ def create_ppt_with_template(markdown_slides: str, template_file=None):
                     if line.startswith('-'):
                         if first_bullet:
                             p = tf.paragraphs[0]
+                            p.text = line.lstrip('- ').strip()
                             first_bullet = False
                         else:
                             p = tf.add_paragraph()
-                        p.text = line.lstrip('- ').strip()
+                            p.text = line.lstrip('- ').strip()
                         p.font.size = Pt(18)
                         p.level = 0
                 # Enable auto-fit after all text is added
