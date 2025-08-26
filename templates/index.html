@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Text, Your Style - AI Presentation Generator</title>
+    <title>AI Presentation Generator</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
@@ -55,7 +55,6 @@
             cursor: not-allowed;
         }
 
-        /* Custom file input */
         .file-input-label {
             cursor: pointer;
             border: 2px dashed #cbd5e1;
@@ -74,30 +73,39 @@
     <div class="w-full max-w-2xl mx-auto">
         <div class="professional-card p-8 md:p-12">
             <div class="text-center mb-10">
-                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">Your Text, Your Style</h1>
-                <p class="text-slate-600 mt-4 text-lg">Auto-Generate a Presentation from Text & a Template</p>
+                <h1 class="text-4xl md:text-5xl font-extrabold text-gray-900 tracking-tight">AI Presentation Generator
+                </h1>
+                <p class="text-slate-600 mt-4 text-lg">Your Text, Your Style. Instantly.</p>
             </div>
 
             <form id="ppt-form" class="space-y-6">
-                <!-- Text Input -->
+                <!-- Bulk Text Input -->
                 <div>
-                    <label for="bulk-text" class="block text-sm font-medium text-slate-700 mb-2">1. Paste Your
+                    <label for="bulk_text" class="block text-sm font-medium text-slate-700 mb-2">1. Paste Your
                         Text</label>
-                    <textarea id="bulk-text" name="bulk-text" rows="10" class="w-full p-4 rounded-lg"
+                    <textarea id="bulk_text" name="bulk_text" rows="10" class="w-full p-4 rounded-lg"
                         placeholder="Paste your article, notes, or any block of text here..."></textarea>
+                </div>
+
+                <!-- Number of Slides -->
+                <div>
+                    <label for="number_of_slides" class="block text-sm font-medium text-slate-700 mb-2">2. Number of
+                        Slides</label>
+                    <input type="number" id="number_of_slides" name="number_of_slides" class="w-full p-3 rounded-lg"
+                        value="3" min="2">
                 </div>
 
                 <!-- Guidance Input -->
                 <div>
-                    <label for="guidance" class="block text-sm font-medium text-slate-700 mb-2">2. (Optional) Add
+                    <label for="guidance" class="block text-sm font-medium text-slate-700 mb-2">3. (Optional) Add
                         Guidance</label>
                     <input type="text" id="guidance" name="guidance" class="w-full p-3 rounded-lg"
-                        placeholder="e.g., 'Make this an investor pitch deck'">
+                        placeholder="e.g., 'Make this for a high school class'">
                 </div>
 
                 <!-- API Key Input -->
                 <div>
-                    <label for="api-key" class="block text-sm font-medium text-slate-700 mb-2">3. Your LLM API
+                    <label for="api-key" class="block text-sm font-medium text-slate-700 mb-2">4. Your LLM API
                         Key</label>
                     <input type="password" id="api-key" name="api-key" class="w-full p-3 rounded-lg"
                         placeholder="Enter your Gemini, OpenAI, or Anthropic key">
@@ -107,7 +115,7 @@
 
                 <!-- Template Upload -->
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">4. Upload a PowerPoint Template
+                    <label class="block text-sm font-medium text-slate-700 mb-2">5. Upload a PowerPoint Template
                         (.pptx)</label>
                     <label for="template-file"
                         class="file-input-label w-full p-6 rounded-lg flex flex-col items-center justify-center text-center">
@@ -154,7 +162,8 @@
             errorMessage.textContent = '';
 
             const formData = new FormData();
-            formData.append('bulk_text', document.getElementById('bulk-text').value);
+            formData.append('bulk_text', document.getElementById('bulk_text').value);
+            formData.append('number_of_slides', document.getElementById('number_of_slides').value);
             formData.append('guidance', document.getElementById('guidance').value);
             formData.append('api_key', document.getElementById('api-key').value);
 
@@ -164,7 +173,6 @@
             }
             formData.append('template_file', fileInput.files[0]);
 
-            // UI state: loading
             generateBtn.disabled = true;
             loadingSpinner.classList.remove('hidden');
             generateBtn.querySelector('span').textContent = 'Generating...';
@@ -174,7 +182,7 @@
 
                 const response = await fetch(apiUrl, {
                     method: 'POST',
-                    body: formData, // FormData sets the correct headers automatically
+                    body: formData,
                 });
 
                 if (!response.ok) {
@@ -182,7 +190,6 @@
                     throw new Error(errorData.error || `Server error: ${response.statusText}`);
                 }
 
-                // Handle file download
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -197,7 +204,6 @@
                 console.error('Error:', error);
                 errorMessage.textContent = error.message;
             } finally {
-                // UI state: reset
                 generateBtn.disabled = false;
                 loadingSpinner.classList.add('hidden');
                 generateBtn.querySelector('span').textContent = 'Generate Presentation';

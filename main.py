@@ -11,34 +11,36 @@ load_dotenv()
 FALLBACK_GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 MODEL_NAME = "gemini-1.5-pro-latest"
 
-# --- 2. The AI Chain (Re-written for Research and Content Generation) ---
-# This prompt now instructs the AI to research a topic and create content.
+# --- 2. The AI Chain (for Markdown Generation) ---
+# This prompt is updated to take bulk_text and number_of_slides.
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are an expert research assistant and presentation designer. Your goal is to generate a detailed markdown string for a presentation on a given topic.
-    You will research the topic to gather concise, accurate information and then structure it into the requested number of slides.
+    You are an expert presentation designer AI. Your goal is to generate a detailed markdown string for a presentation based on the user's text.
+    You must structure the text into the exact number of slides requested by the user.
     Your final output must ONLY be the markdown string, following the specified format with `---` separators.
     """),
     ("user", """
     Here are the precise formatting rules you MUST follow for each slide.
 
     **Slide 1: Title Slide**
-    - A title line starting with `#`. The title should be compelling and relevant to the topic.
-    - A subtitle line starting with `##`. The subtitle should be a short, engaging summary.
+    - A title line starting with `#`.
+    - A subtitle line starting with `##`.
     ---
     **Content Slides**
     - Each slide MUST have a title line starting with `#`.
-    - Each slide MUST have 2-4 concise bullet points summarizing key information about the topic.
+    - Each slide MUST have 2-5 bullet points starting with `-`.
     ---
     **Conclusion Slide**
     - The final slide MUST have a title line starting with `#`.
-    - The final slide MUST have 2-3 summary bullet points of the main takeaways.
+    - The final slide MUST have 2-3 summary bullet points.
 
     **Optional Guidance for tone and structure:** {guidance}
 
-    Now, please research the following topic and create the markdown for a presentation with exactly {number_of_slides} slides.
+    Now, analyze the following text and generate the markdown for a presentation with exactly {number_of_slides} slides.
 
-    **TOPIC:** {topic}
+    <TEXT>
+    {bulk_text}
+    </TEXT>
     """),
 ])
 
@@ -58,7 +60,7 @@ def create_ppt_with_template(markdown_slides: str, template_file):
     """Creates a PowerPoint presentation applying styles from a template file."""
     prs = pptx.Presentation(template_file)
     
-    # Remove all existing slides from the template
+    # --- FIX: Remove all existing slides from the template ---
     while len(prs.slides) > 0:
         rId = prs.slides._sldIdLst[0].rId
         prs.part.drop_rel(rId)
@@ -114,7 +116,7 @@ def generate_presentation():
         return jsonify({"error": "No template file provided."}), 400
 
     template_file = request.files['template_file']
-    topic = request.form.get('topic', '')
+    bulk_text = request.form.get('bulk_text', '')
     guidance = request.form.get('guidance', 'A standard professional presentation.')
     user_api_key = request.form.get('api_key', '')
     number_of_slides = int(request.form.get('number_of_slides', 3))
@@ -128,7 +130,7 @@ def generate_presentation():
         chain = prompt | llm
 
         response = chain.invoke({
-            "topic": topic,
+            "bulk_text": bulk_text,
             "guidance": guidance,
             "number_of_slides": number_of_slides
         })
