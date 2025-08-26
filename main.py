@@ -43,7 +43,7 @@ generate_prompt = ChatPromptTemplate.from_messages([
     """),
 ])
 
-# --- NEW: Prompt for the "Improvise" feature ---
+# Prompt for the "Improvise" feature
 improvise_prompt = ChatPromptTemplate.from_messages([
     ("system", "You are an expert presentation editor AI. Your task is to revise and improve an existing presentation plan based on user feedback. Refine the content, titles, and structure to better match the user's guidance. Your final output must ONLY be the revised markdown string, keeping the same number of slides and the same `---` format."),
     ("user", """
@@ -60,13 +60,20 @@ improvise_prompt = ChatPromptTemplate.from_messages([
 
 
 # --- 3. PowerPoint Helper Function ---
-def create_ppt_with_template(markdown_slides: str, template_file):
-    prs = pptx.Presentation(template_file)
-    
-    while len(prs.slides) > 0:
-        rId = prs.slides._sldIdLst[0].rId
-        prs.part.drop_rel(rId)
-        del prs.slides._sldIdLst[0]
+def create_ppt_with_template(markdown_slides: str, template_file=None):
+    """Creates a PowerPoint presentation, using a template file if provided, or a new one if not."""
+    # --- FIX: Use the provided template or create a new presentation ---
+    if template_file:
+        prs = pptx.Presentation(template_file)
+        # Clear existing slides if a template is used
+        while len(prs.slides) > 0:
+            rId = prs.slides._sldIdLst[0].rId
+            prs.part.drop_rel(rId)
+            del prs.slides._sldIdLst[0]
+    else:
+        # If no template, create a fresh presentation object with default layouts
+        prs = pptx.Presentation()
+    # --- End of Fix ---
 
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
     title_layout = prs.slide_layouts[0]
@@ -111,7 +118,6 @@ def create_ppt_with_template(markdown_slides: str, template_file):
 app = Flask(__name__)
 
 def get_llm(user_api_key):
-    """Initializes the LLM with the user's key or a fallback."""
     api_key_to_use = user_api_key or FALLBACK_GOOGLE_API_KEY
     if not api_key_to_use:
         raise ValueError("API key is missing.")
@@ -152,11 +158,15 @@ def improvise_plan_route():
 
 @app.route("/create_file", methods=['POST'])
 def create_file_route():
-    if 'template_file' not in request.files or 'markdown_plan' not in request.form:
-        return jsonify({"error": "Missing form data."}), 400
+    # --- FIX: Handle optional template file ---
+    template_file = None
+    if 'template_file' in request.files and request.files['template_file'].filename != '':
+        template_file = request.files['template_file']
     
-    template_file = request.files['template_file']
     markdown_plan = request.form.get('markdown_plan')
+    if not markdown_plan:
+        return jsonify({"error": "Missing markdown plan."}), 400
+    # --- End of Fix ---
     
     try:
         ppt_buffer = create_ppt_with_template(markdown_plan, template_file)

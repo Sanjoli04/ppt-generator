@@ -77,7 +77,6 @@
             background-color: #f9fafb;
         }
 
-        /* Slide Preview Styles */
         .slide-card {
             background-color: #ffffff;
             border: 1px solid #e2e8f0;
@@ -121,13 +120,15 @@
                         </div>
                         <div>
                             <label for="api-key" class="block text-sm font-medium text-slate-700 mb-2">3. Your LLM API
-                                Key</label>
-                            <input type="password" id="api-key" class="w-full p-3 rounded-lg" placeholder="Optional">
+                                Key (Optional)</label>
+                            <input type="password" id="api-key" class="w-full p-3 rounded-lg"
+                                placeholder="Uses a server key if blank">
                         </div>
                     </div>
                     <div>
+                        <!-- FIX: Updated label to indicate it's optional -->
                         <label for="template-file" class="block text-sm font-medium text-slate-700 mb-2">4. Upload a
-                            PowerPoint Template</label>
+                            PowerPoint Template (Optional)</label>
                         <label for="template-file"
                             class="file-input-label w-full p-6 rounded-lg flex flex-col items-center justify-center text-center">
                             <i class="fas fa-cloud-upload-alt text-3xl text-slate-400 mb-2"></i>
@@ -153,7 +154,6 @@
                     <p class="text-slate-600 mt-2">Here's the AI's plan. You can download it or ask for an
                         improvisation.</p>
                 </div>
-                <!-- This is where the slide cards will be rendered -->
                 <div id="slide-preview-container"
                     class="space-y-6 max-h-[50vh] overflow-y-auto p-2 bg-slate-50 rounded-lg"></div>
                 <div class="mt-6 space-y-4">
@@ -190,7 +190,6 @@
     </div>
 
     <script>
-        // DOM Elements
         const step1 = document.getElementById('step-1-input');
         const step2 = document.getElementById('step-2-review');
         const form = document.getElementById('ppt-form');
@@ -208,7 +207,6 @@
             fileNameDisplay.textContent = fileInput.files.length > 0 ? fileInput.files[0].name : 'Click to browse or drag & drop';
         });
 
-        // --- Step 1: Generate Initial Plan ---
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             if (!validateInitialForm()) return;
@@ -243,7 +241,6 @@
             }
         });
 
-        // --- Step 2a: Improvise Plan ---
         improviseBtn.addEventListener('click', async () => {
             setLoadingState(improviseBtn, 'Improvising...', true);
 
@@ -271,14 +268,16 @@
             }
         });
 
-        // --- Step 2b: Download File ---
         downloadBtn.addEventListener('click', async () => {
             setLoadingState(downloadBtn, 'Creating...', true);
 
             try {
                 const formData = new FormData();
                 formData.append('markdown_plan', currentMarkdownPlan);
-                formData.append('template_file', fileInput.files[0]);
+                // --- FIX: Only append the file if one is selected ---
+                if (fileInput.files.length > 0) {
+                    formData.append('template_file', fileInput.files[0]);
+                }
 
                 const response = await fetch('/create_file', {
                     method: 'POST',
@@ -304,17 +303,13 @@
             }
         });
 
-        // --- Helper Functions ---
         function validateInitialForm() {
             errorMessage.textContent = '';
             if (!document.getElementById('bulk_text').value.trim()) {
                 errorMessage.textContent = 'Please provide the text for your presentation.';
                 return false;
             }
-            if (fileInput.files.length === 0) {
-                errorMessage.textContent = 'Please upload a PowerPoint template file.';
-                return false;
-            }
+            // --- FIX: Removed validation that required a template file ---
             return true;
         }
 
@@ -329,7 +324,6 @@
             errorMessage.textContent = error.message || 'An unknown error occurred.';
         }
 
-        // --- NEW: Function to render slide cards ---
         function renderSlidePreview(markdown) {
             slidePreviewContainer.innerHTML = '';
             const slides = markdown.split('---').filter(s => s.trim());
@@ -354,7 +348,6 @@
                 `;
                 slidePreviewContainer.appendChild(card);
 
-                // Animate the card into view
                 setTimeout(() => card.classList.add('visible'), index * 100);
             });
         }
