@@ -6,7 +6,6 @@ from flask import Flask, render_template, jsonify, request, send_file
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from dotenv import load_dotenv
-# --- FIX: Import the necessary enums for text fitting ---
 from pptx.enum.text import MSO_AUTO_SIZE
 
 # --- 1. Setup and Configuration ---
@@ -57,14 +56,20 @@ def get_layout_from_template(prs, layout_name):
         return prs.slide_layouts[0]
     return prs.slide_layouts[1]
 
-def create_ppt_with_template(markdown_slides: str, template_file):
-    """Creates a PowerPoint presentation applying styles from a template file."""
-    prs = pptx.Presentation(template_file)
-    
-    while len(prs.slides) > 0:
-        rId = prs.slides._sldIdLst[0].rId
-        prs.part.drop_rel(rId)
-        del prs.slides._sldIdLst[0]
+def create_ppt_with_template(markdown_slides: str, template_file=None):
+    """Creates a PowerPoint presentation, using a template file if provided."""
+    # --- FIX: Use the provided template or create a new presentation ---
+    if template_file:
+        prs = pptx.Presentation(template_file)
+        # Clear existing slides if a template is used
+        while len(prs.slides) > 0:
+            rId = prs.slides._sldIdLst[0].rId
+            prs.part.drop_rel(rId)
+            del prs.slides._sldIdLst[0]
+    else:
+        # If no template, create a fresh presentation object
+        prs = pptx.Presentation()
+    # --- End of Fix ---
 
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
 
@@ -97,14 +102,12 @@ def create_ppt_with_template(markdown_slides: str, template_file):
 
             if body:
                 tf = body.text_frame
-                # --- FIX: Enable auto-fit for the body text ---
                 tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
                 tf.clear()
                 for line in lines[1:]:
                     if line.startswith('-'):
                         p = tf.add_paragraph()
                         p.text = line.lstrip('- ').strip()
-                        # We can still set a base font size, but auto-fit will shrink it if needed.
                         p.font.size = Pt(18)
                         p.level = 0
     
@@ -123,10 +126,13 @@ def index():
 @app.route("/generate_presentation", methods=['POST'])
 def generate_presentation():
     """Single endpoint to handle all inputs and generate the presentation."""
-    if 'template_file' not in request.files:
-        return jsonify({"error": "No template file provided."}), 400
+    
+    # --- FIX: Handle optional template file ---
+    template_file = None
+    if 'template_file' in request.files and request.files['template_file'].filename != '':
+        template_file = request.files['template_file']
+    # --- End of Fix ---
 
-    template_file = request.files['template_file']
     bulk_text = request.form.get('bulk_text', '')
     guidance = request.form.get('guidance', 'A standard professional presentation.')
     user_api_key = request.form.get('api_key', '')
