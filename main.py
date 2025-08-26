@@ -62,18 +62,14 @@ improvise_prompt = ChatPromptTemplate.from_messages([
 # --- 3. PowerPoint Helper Function ---
 def create_ppt_with_template(markdown_slides: str, template_file=None):
     """Creates a PowerPoint presentation, using a template file if provided, or a new one if not."""
-    # --- FIX: Use the provided template or create a new presentation ---
     if template_file:
         prs = pptx.Presentation(template_file)
-        # Clear existing slides if a template is used
         while len(prs.slides) > 0:
             rId = prs.slides._sldIdLst[0].rId
             prs.part.drop_rel(rId)
             del prs.slides._sldIdLst[0]
     else:
-        # If no template, create a fresh presentation object with default layouts
         prs = pptx.Presentation()
-    # --- End of Fix ---
 
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
     title_layout = prs.slide_layouts[0]
@@ -88,26 +84,32 @@ def create_ppt_with_template(markdown_slides: str, template_file=None):
             title = slide.shapes.title
             subtitle = slide.placeholders[1] if len(slide.placeholders) > 1 else None
             title.text = lines[0].replace('#', '').strip()
-            title.text_frame.paragraphs[0].font.size = Pt(44)
             if subtitle and len(lines) > 1:
                 subtitle.text = lines[1].replace('##', '').strip()
-                subtitle.text_frame.paragraphs[0].font.size = Pt(32)
         else:
             slide = prs.slides.add_slide(content_layout)
             title = slide.shapes.title
             body = slide.placeholders[1] if len(slide.placeholders) > 1 else None
             title.text = lines[0].replace('#', '').strip()
-            title.text_frame.paragraphs[0].font.size = Pt(36)
             if body:
                 tf = body.text_frame
-                tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
                 tf.clear()
+                # --- CRITICAL FIX: Properly populate bullet points ---
+                # The first paragraph is set outside the loop to establish the text frame.
+                # Subsequent paragraphs are added correctly.
+                first_bullet = True
                 for line in lines[1:]:
                     if line.startswith('-'):
-                        p = tf.add_paragraph()
+                        if first_bullet:
+                            p = tf.paragraphs[0]
+                            first_bullet = False
+                        else:
+                            p = tf.add_paragraph()
                         p.text = line.lstrip('- ').strip()
                         p.font.size = Pt(18)
                         p.level = 0
+                # Enable auto-fit after all text is added
+                tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
     
     buffer = io.BytesIO()
     prs.save(buffer)
@@ -158,7 +160,6 @@ def improvise_plan_route():
 
 @app.route("/create_file", methods=['POST'])
 def create_file_route():
-    # --- FIX: Handle optional template file ---
     template_file = None
     if 'template_file' in request.files and request.files['template_file'].filename != '':
         template_file = request.files['template_file']
@@ -166,7 +167,6 @@ def create_file_route():
     markdown_plan = request.form.get('markdown_plan')
     if not markdown_plan:
         return jsonify({"error": "Missing markdown plan."}), 400
-    # --- End of Fix ---
     
     try:
         ppt_buffer = create_ppt_with_template(markdown_plan, template_file)
