@@ -53,16 +53,29 @@ def get_layout_from_template(prs, layout_name):
         for layout in master.slide_layouts:
             if layout.name == layout_name:
                 return layout
-    return None
+    # Fallback if a named layout isn't found
+    if "title" in layout_name.lower():
+        return prs.slide_layouts[0]
+    return prs.slide_layouts[1]
 
 def create_ppt_with_template(markdown_slides: str, template_file):
     """Creates a PowerPoint presentation applying styles from a template file."""
     prs = pptx.Presentation(template_file)
+    
+    # --- FIX: Remove all existing slides from the template ---
+    # This loop iterates through all slide IDs in the presentation and removes them,
+    # leaving us with a blank presentation that retains the template's styles.
+    while len(prs.slides) > 0:
+        rId = prs.slides._sldIdLst[0].rId
+        prs.part.drop_rel(rId)
+        del prs.slides._sldIdLst[0]
+    # --- End of Fix ---
+
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
 
     # Try to find standard layouts, otherwise fall back to defaults
-    title_layout = get_layout_from_template(prs, 'Title Slide') or prs.slide_layouts[0]
-    content_layout = get_layout_from_template(prs, 'Title and Content') or prs.slide_layouts[1]
+    title_layout = get_layout_from_template(prs, 'Title Slide')
+    content_layout = get_layout_from_template(prs, 'Title and Content')
 
     for i, slide_markdown in enumerate(slides_content):
         lines = [line.strip() for line in slide_markdown.split('\n') if line.strip()]
@@ -140,7 +153,6 @@ def generate_presentation():
         )
     except Exception as e:
         print(f"An error occurred: {e}")
-        # Provide a more specific error message if it's an authentication issue
         if "API key not valid" in str(e):
              return jsonify({"error": "The provided API key is not valid. Please check it and try again."}), 401
         return jsonify({"error": "An error occurred while generating the presentation."}), 500
