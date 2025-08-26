@@ -1,6 +1,7 @@
 import os
 import io
 import pptx
+from pptx.util import Pt # --- FIX: Import Pt to set font sizes ---
 from flask import Flask, render_template, jsonify, request, send_file
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -80,14 +81,24 @@ def create_ppt_with_template(markdown_slides: str, template_file):
             slide = prs.slides.add_slide(title_layout)
             title = slide.shapes.title
             subtitle = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+            
             title.text = lines[0].replace('#', '').strip()
+            # --- FIX: Set title font size ---
+            title.text_frame.paragraphs[0].font.size = Pt(44)
+            
             if subtitle and len(lines) > 1:
                 subtitle.text = lines[1].replace('##', '').strip()
+                # --- FIX: Set subtitle font size ---
+                subtitle.text_frame.paragraphs[0].font.size = Pt(32)
         else:
             slide = prs.slides.add_slide(content_layout)
             title = slide.shapes.title
             body = slide.placeholders[1] if len(slide.placeholders) > 1 else None
+            
             title.text = lines[0].replace('#', '').strip()
+            # --- FIX: Set content slide title font size ---
+            title.text_frame.paragraphs[0].font.size = Pt(36)
+
             if body:
                 tf = body.text_frame
                 tf.clear()
@@ -95,6 +106,8 @@ def create_ppt_with_template(markdown_slides: str, template_file):
                     if line.startswith('-'):
                         p = tf.add_paragraph()
                         p.text = line.lstrip('- ').strip()
+                        # --- FIX: Set body text font size ---
+                        p.font.size = Pt(18)
                         p.level = 0
     
     buffer = io.BytesIO()
