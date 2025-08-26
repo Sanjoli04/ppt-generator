@@ -1,7 +1,6 @@
 import os
 import io
 import pptx
-from pptx.util import Inches, Pt
 from flask import Flask, render_template, jsonify, request, send_file
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -9,40 +8,37 @@ from dotenv import load_dotenv
 
 # --- 1. Setup and Configuration ---
 load_dotenv()
-# The server's own key is now optional, used only if the user doesn't provide one.
 FALLBACK_GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 MODEL_NAME = "gemini-1.5-pro-latest"
 
-# --- 2. The AI Chain (for Markdown Generation) ---
-# The prompt is updated to accept optional guidance and let the AI decide the slide count.
+# --- 2. The AI Chain (Re-written for Research and Content Generation) ---
+# This prompt now instructs the AI to research a topic and create content.
 prompt = ChatPromptTemplate.from_messages([
     ("system", """
-    You are an expert presentation designer AI. Your goal is to generate a detailed markdown string for a presentation based on the user's text.
-    You will be given a block of text and optional guidance. Your task is to intelligently structure this text into a logical number of slides.
+    You are an expert research assistant and presentation designer. Your goal is to generate a detailed markdown string for a presentation on a given topic.
+    You will research the topic to gather concise, accurate information and then structure it into the requested number of slides.
     Your final output must ONLY be the markdown string, following the specified format with `---` separators.
     """),
     ("user", """
     Here are the precise formatting rules you MUST follow for each slide.
 
     **Slide 1: Title Slide**
-    - A title line starting with `#`.
-    - A subtitle line starting with `##`.
+    - A title line starting with `#`. The title should be compelling and relevant to the topic.
+    - A subtitle line starting with `##`. The subtitle should be a short, engaging summary.
     ---
     **Content Slides**
     - Each slide MUST have a title line starting with `#`.
-    - Each slide MUST have 2-5 bullet points starting with `-`.
+    - Each slide MUST have 2-4 concise bullet points summarizing key information about the topic.
     ---
     **Conclusion Slide**
     - The final slide MUST have a title line starting with `#`.
-    - The final slide MUST have 2-3 summary bullet points.
+    - The final slide MUST have 2-3 summary bullet points of the main takeaways.
 
     **Optional Guidance for tone and structure:** {guidance}
 
-    Now, analyze the following text and generate the markdown for a presentation. Choose a reasonable number of slides to cover the content effectively.
+    Now, please research the following topic and create the markdown for a presentation with exactly {number_of_slides} slides.
 
-    <TEXT>
-    {bulk_text}
-    </TEXT>
+    **TOPIC:** {topic}
     """),
 ])
 
@@ -62,18 +58,14 @@ def create_ppt_with_template(markdown_slides: str, template_file):
     """Creates a PowerPoint presentation applying styles from a template file."""
     prs = pptx.Presentation(template_file)
     
-    # --- FIX: Remove all existing slides from the template ---
-    # This loop iterates through all slide IDs in the presentation and removes them,
-    # leaving us with a blank presentation that retains the template's styles.
+    # Remove all existing slides from the template
     while len(prs.slides) > 0:
         rId = prs.slides._sldIdLst[0].rId
         prs.part.drop_rel(rId)
         del prs.slides._sldIdLst[0]
-    # --- End of Fix ---
 
     slides_content = [s.strip() for s in markdown_slides.strip().split('---') if s.strip()]
 
-    # Try to find standard layouts, otherwise fall back to defaults
     title_layout = get_layout_from_template(prs, 'Title Slide')
     content_layout = get_layout_from_template(prs, 'Title and Content')
 
@@ -122,27 +114,26 @@ def generate_presentation():
         return jsonify({"error": "No template file provided."}), 400
 
     template_file = request.files['template_file']
-    bulk_text = request.form.get('bulk_text', '')
+    topic = request.form.get('topic', '')
     guidance = request.form.get('guidance', 'A standard professional presentation.')
     user_api_key = request.form.get('api_key', '')
+    number_of_slides = int(request.form.get('number_of_slides', 3))
 
     api_key_to_use = user_api_key or FALLBACK_GOOGLE_API_KEY
     if not api_key_to_use:
         return jsonify({"error": "No API key provided or configured on the server."}), 400
 
     try:
-        # Initialize the LLM with the user's key
         llm = ChatGoogleGenerativeAI(model=MODEL_NAME, google_api_key=api_key_to_use)
         chain = prompt | llm
 
-        # Step 1: Generate the markdown plan from the AI
         response = chain.invoke({
-            "bulk_text": bulk_text,
-            "guidance": guidance
+            "topic": topic,
+            "guidance": guidance,
+            "number_of_slides": number_of_slides
         })
         markdown_plan = response.content.strip().replace("```markdown", "").replace("```", "")
 
-        # Step 2: Create the PPT file in memory using the template
         ppt_buffer = create_ppt_with_template(markdown_plan, template_file)
         
         return send_file(
