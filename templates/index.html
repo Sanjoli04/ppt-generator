@@ -14,21 +14,21 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f8fafc;
+            background-color: #f0f2f5;
         }
 
-        .professional-card {
+        .main-card {
             background: white;
             border-radius: 20px;
             border: 1px solid #e2e8f0;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             transition: all 0.5s ease-in-out;
         }
 
         input,
         textarea {
             transition: all 0.3s ease;
-            background-color: #f1f5f9;
+            background-color: #f8fafc;
             color: #1e293b;
             border: 1px solid #cbd5e1;
         }
@@ -77,37 +77,28 @@
             background-color: #f9fafb;
         }
 
-        #plan-output {
-            min-height: 300px;
-            background-color: #f8fafc;
+        /* Slide Preview Styles */
+        .slide-card {
+            background-color: #ffffff;
             border: 1px solid #e2e8f0;
-            white-space: pre-wrap;
-            font-family: 'Courier New', Courier, monospace;
-            color: #334155;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transform: scale(0.95);
+            opacity: 0;
+            transition: all 0.5s ease-out;
         }
 
-        .blinking-cursor {
-            animation: blink 1s step-end infinite;
-        }
-
-        @keyframes blink {
-
-            from,
-            to {
-                color: transparent
-            }
-
-            50% {
-                color: #4f46e5;
-            }
+        .slide-card.visible {
+            transform: scale(1);
+            opacity: 1;
         }
     </style>
 </head>
 
 <body class="text-slate-800 flex items-center justify-center min-h-screen p-4">
 
-    <div class="w-full max-w-2xl mx-auto">
-        <div class="professional-card p-8 md:p-12">
+    <div class="w-full max-w-3xl mx-auto">
+        <div class="main-card p-8 md:p-12">
             <!-- Step 1: Input Form -->
             <div id="step-1-input">
                 <div class="text-center mb-10">
@@ -162,7 +153,9 @@
                     <p class="text-slate-600 mt-2">Here's the AI's plan. You can download it or ask for an
                         improvisation.</p>
                 </div>
-                <div id="plan-output" class="w-full p-4 rounded-lg overflow-y-auto"></div>
+                <!-- This is where the slide cards will be rendered -->
+                <div id="slide-preview-container"
+                    class="space-y-6 max-h-[50vh] overflow-y-auto p-2 bg-slate-50 rounded-lg"></div>
                 <div class="mt-6 space-y-4">
                     <div>
                         <label for="improvise_guidance"
@@ -204,7 +197,7 @@
         const planBtn = document.getElementById('plan-btn');
         const improviseBtn = document.getElementById('improvise-btn');
         const downloadBtn = document.getElementById('download-btn');
-        const planOutput = document.getElementById('plan-output');
+        const slidePreviewContainer = document.getElementById('slide-preview-container');
         const errorMessage = document.getElementById('error-message');
         const fileInput = document.getElementById('template-file');
         const fileNameDisplay = document.getElementById('file-name-display');
@@ -241,7 +234,7 @@
 
                 step1.classList.add('hidden');
                 step2.classList.remove('hidden');
-                typewriterEffect(currentMarkdownPlan);
+                renderSlidePreview(currentMarkdownPlan);
 
             } catch (error) {
                 handleError(error);
@@ -269,7 +262,7 @@
 
                 const data = await response.json();
                 currentMarkdownPlan = data.markdown_plan;
-                typewriterEffect(currentMarkdownPlan);
+                renderSlidePreview(currentMarkdownPlan);
 
             } catch (error) {
                 handleError(error);
@@ -336,21 +329,34 @@
             errorMessage.textContent = error.message || 'An unknown error occurred.';
         }
 
-        function typewriterEffect(text) {
-            let i = 0;
-            planOutput.innerHTML = '';
-            const cursor = '<span class="blinking-cursor">|</span>';
+        // --- NEW: Function to render slide cards ---
+        function renderSlidePreview(markdown) {
+            slidePreviewContainer.innerHTML = '';
+            const slides = markdown.split('---').filter(s => s.trim());
 
-            function type() {
-                if (i < text.length) {
-                    planOutput.innerHTML = text.substring(0, i + 1) + cursor;
-                    i++;
-                    setTimeout(type, 10); // Typing speed
-                } else {
-                    planOutput.innerHTML = text;
-                }
-            }
-            type();
+            slides.forEach((slideMarkdown, index) => {
+                const lines = slideMarkdown.trim().split('\n');
+                const title = lines.find(l => l.startsWith('#'))?.replace(/#+\s*/, '') || 'Untitled';
+                const subtitle = lines.find(l => l.startsWith('##'))?.replace(/##+\s*/, '') || '';
+                const bullets = lines.filter(l => l.startsWith('-')).map(l => `<li>${l.replace(/-\s*/, '')}</li>`).join('');
+
+                const card = document.createElement('div');
+                card.className = 'slide-card p-6';
+                card.innerHTML = `
+                    <div class="flex items-center mb-4">
+                        <div class="bg-indigo-100 text-indigo-600 font-bold rounded-full h-8 w-8 flex items-center justify-center mr-3">${index + 1}</div>
+                        <div>
+                            <h3 class="text-xl font-bold text-gray-800">${title}</h3>
+                            ${subtitle ? `<p class="text-sm text-gray-500">${subtitle}</p>` : ''}
+                        </div>
+                    </div>
+                    ${bullets ? `<ul class="list-disc list-inside text-gray-700 space-y-2">${bullets}</ul>` : ''}
+                `;
+                slidePreviewContainer.appendChild(card);
+
+                // Animate the card into view
+                setTimeout(() => card.classList.add('visible'), index * 100);
+            });
         }
     </script>
 </body>
